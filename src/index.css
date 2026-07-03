@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bebas Neue", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --color-gold: #c9a84c;
+  --color-gold-light: #dfbe65;
+  --color-gold-dark: #aa8933;
+  --color-bg-dark: #0c0c0c;
+  --color-surface-dark: #121212;
+  --color-surface-light: #1e1e1e;
+  --color-surface-border: rgba(255, 255, 255, 0.06);
+}
+
+/* Base resets & styles for high-end barbershop premium dark theme */
+html, body {
+  background-color: var(--color-bg-dark);
+  color: #f3f4f6;
+  font-family: var(--font-sans);
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold);
+}
+
+/* Custom premium glow effects */
+.gold-glow {
+  box-shadow: 0 0 15px rgba(201, 168, 76, 0.15);
+}
+
+.gold-glow-strong {
+  box-shadow: 0 0 25px rgba(201, 168, 76, 0.35);
+}
+
+.gold-text-glow {
+  text-shadow: 0 0 8px rgba(201, 168, 76, 0.4);
+}
+
+/* PWA styles */
+@keyframes scanning {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 100%;
+    opacity: 0.8;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.8;
+  }
+}
+
+.scan-line {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-gold), transparent);
+  box-shadow: 0 0 12px var(--color-gold);
+  animation: scanning 3.5s infinite linear;
+}
+
+.camera-guide {
+  border: 2px dashed rgba(201, 168, 76, 0.4);
+  border-radius: 50% 50% 45% 45% / 45% 45% 55% 55%;
+  animation: pulse 2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.6;
+    border-color: rgba(201, 168, 76, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
+    border-color: rgba(201, 168, 76, 0.8);
+  }
+}

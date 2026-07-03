@@ -1,0 +1,6 @@
+{
+  "name": "CorteSmart",
+  "description": "Suite premium de administración para barberías con escáner facial biométrico, IA de recomendaciones, agenda visual de citas y CRM de clientes.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
