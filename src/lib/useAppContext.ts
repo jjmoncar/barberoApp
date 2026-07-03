@@ -10,11 +10,15 @@ import {
 } from '../types';
 
 export type UserRole = 'owner' | 'barber' | 'client';
+export type AppLanguage = 'es' | 'pt';
 
 export function useAppState() {
   const [role, setRole] = useState<UserRole>('owner');
   const [currentView, setCurrentView] = useState<string>('dashboard'); // 'dashboard', 'agenda', 'clientes', 'inventario', 'ai_explorer', 'config', 'public_booking'
   const [loading, setLoading] = useState<boolean>(true);
+  const [language, setLanguage] = useState<AppLanguage>(() => {
+    return (localStorage.getItem('cortesmart_lang') as AppLanguage) || 'es';
+  });
   
   // State variables
   const [config, setConfig] = useState<BarbershopConfig | null>(null);
@@ -131,6 +135,11 @@ export function useAppState() {
     await refreshProducts(); // Products stock got reduced!
   };
 
+  const changeLanguage = (lang: AppLanguage) => {
+    setLanguage(lang);
+    localStorage.setItem('cortesmart_lang', lang);
+  };
+
   return {
     role,
     setRole,
@@ -151,7 +160,9 @@ export function useAppState() {
     visitRecords,
     addVisitRecord,
     selectedClientId,
-    setSelectedClientId
+    setSelectedClientId,
+    language,
+    setLanguage: changeLanguage
   };
 }
 export type AppState = ReturnType<typeof useAppState>;

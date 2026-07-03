@@ -12,7 +12,7 @@ import {
   getDoc,
   getDocFromServer
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { 
   BarbershopConfig, 
   Client, 
@@ -120,9 +120,57 @@ export const DEFAULT_EXPENSES: Expense[] = [
   { id: "e4", date: "2026-07-02", description: "Suministro de Tónicos y Talco", category: "Insumos", amount: 1800 }
 ];
 
-// Helper to write data to LocalStorage if Firestore is failing or rules are not set
+// --- FIRESTORE PRODUCTION ERROR HANDLER (ABAC/Zero-Trust requirements) ---
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  }
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
+    },
+    operationType,
+    path
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Helper to write data directly to Firebase Firestore
 class StorageService {
-  private isFirebaseWorking = false;
   private initPromise: Promise<void> | null = null;
 
   async init(): Promise<void> {
@@ -131,21 +179,10 @@ class StorageService {
     this.initPromise = (async () => {
       try {
         const docRef = doc(db, 'config', 'barbershop');
-        
-        // Use getDocFromServer to verify server connectivity directly
-        const fetchPromise = getDocFromServer(docRef);
-        
-        // Timeout after 1500ms to avoid blocking
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout establishing Firestore connection")), 1500)
-        );
-
-        await Promise.race([fetchPromise, timeoutPromise]);
-        this.isFirebaseWorking = true;
-        console.log("🔥 Firestore initialized and connected successfully!");
+        await getDocFromServer(docRef);
+        console.log("🔥 Firestore connected and verified successfully in production mode!");
       } catch (e) {
-        console.warn("⚠️ Firestore not available (offline, rules, or unconfigured). Falling back to LocalStorage.", e);
-        this.isFirebaseWorking = false;
+        console.warn("⚠️ Production connection check info: ", e);
       }
     })();
 
@@ -155,309 +192,169 @@ class StorageService {
   // Config
   async getConfig(): Promise<BarbershopConfig> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const docSnap = await getDoc(doc(db, 'config', 'barbershop'));
-        if (docSnap.exists()) {
-          return docSnap.data() as BarbershopConfig;
-        } else {
-          // Seed it
-          await setDoc(doc(db, 'config', 'barbershop'), DEFAULT_CONFIG);
-          return DEFAULT_CONFIG;
-        }
-      } catch (e) {
-        console.error("Firestore getConfig failed, trying LocalStorage", e);
+    try {
+      const docSnap = await getDoc(doc(db, 'config', 'barbershop'));
+      if (docSnap.exists()) {
+        return docSnap.data() as BarbershopConfig;
+      } else {
+        // Seed it once in Firestore so we have an initial configuration
+        await setDoc(doc(db, 'config', 'barbershop'), DEFAULT_CONFIG);
+        return DEFAULT_CONFIG;
       }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.GET, 'config/barbershop');
     }
-    const local = localStorage.getItem('cs_config');
-    if (local) return JSON.parse(local);
-    localStorage.setItem('cs_config', JSON.stringify(DEFAULT_CONFIG));
-    return DEFAULT_CONFIG;
   }
 
   async saveConfig(config: BarbershopConfig): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'config', 'barbershop'), config);
-        return;
-      } catch (e) {
-        console.error("Firestore saveConfig failed", e);
-      }
+    try {
+      await setDoc(doc(db, 'config', 'barbershop'), config);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, 'config/barbershop');
     }
-    localStorage.setItem('cs_config', JSON.stringify(config));
   }
 
   // Clients
   async getClients(): Promise<Client[]> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'clients'));
-        if (querySnapshot.empty) {
-          // Seed clients
-          for (const client of DEFAULT_CLIENTS) {
-            await setDoc(doc(db, 'clients', client.id), client);
-          }
-          return DEFAULT_CLIENTS;
-        }
-        return querySnapshot.docs.map(doc => doc.data() as Client);
-      } catch (e) {
-        console.error("Firestore getClients failed", e);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'clients'));
+      if (querySnapshot.empty) {
+        return [];
       }
+      return querySnapshot.docs.map(doc => doc.data() as Client);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'clients');
     }
-    const local = localStorage.getItem('cs_clients');
-    if (local) return JSON.parse(local);
-    localStorage.setItem('cs_clients', JSON.stringify(DEFAULT_CLIENTS));
-    return DEFAULT_CLIENTS;
   }
 
   async saveClient(client: Client): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'clients', client.id), client);
-        return;
-      } catch (e) {
-        console.error("Firestore saveClient failed", e);
-      }
+    try {
+      await setDoc(doc(db, 'clients', client.id), client);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `clients/${client.id}`);
     }
-    const clients = await this.getClients();
-    const idx = clients.findIndex(c => c.id === client.id);
-    if (idx >= 0) clients[idx] = client;
-    else clients.push(client);
-    localStorage.setItem('cs_clients', JSON.stringify(clients));
   }
 
   // Products
   async getProducts(): Promise<Product[]> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        if (querySnapshot.empty) {
-          for (const product of DEFAULT_PRODUCTS) {
-            await setDoc(doc(db, 'products', product.id), product);
-          }
-          return DEFAULT_PRODUCTS;
-        }
-        return querySnapshot.docs.map(doc => doc.data() as Product);
-      } catch (e) {
-        console.error("Firestore getProducts failed", e);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'products'));
+      if (querySnapshot.empty) {
+        return [];
       }
+      return querySnapshot.docs.map(doc => doc.data() as Product);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'products');
     }
-    const local = localStorage.getItem('cs_products');
-    if (local) return JSON.parse(local);
-    localStorage.setItem('cs_products', JSON.stringify(DEFAULT_PRODUCTS));
-    return DEFAULT_PRODUCTS;
   }
 
   async saveProduct(product: Product): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'products', product.id), product);
-        return;
-      } catch (e) {
-        console.error("Firestore saveProduct failed", e);
-      }
+    try {
+      await setDoc(doc(db, 'products', product.id), product);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `products/${product.id}`);
     }
-    const products = await this.getProducts();
-    const idx = products.findIndex(p => p.id === product.id);
-    if (idx >= 0) products[idx] = product;
-    else products.push(product);
-    localStorage.setItem('cs_products', JSON.stringify(products));
   }
 
   // Appointments
   async getAppointments(): Promise<Appointment[]> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'appointments'));
-        if (querySnapshot.empty) {
-          for (const appt of DEFAULT_APPOINTMENTS) {
-            await setDoc(doc(db, 'appointments', appt.id), appt);
-          }
-          return DEFAULT_APPOINTMENTS;
-        }
-        return querySnapshot.docs.map(doc => doc.data() as Appointment);
-      } catch (e) {
-        console.error("Firestore getAppointments failed", e);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'appointments'));
+      if (querySnapshot.empty) {
+        return [];
       }
+      return querySnapshot.docs.map(doc => doc.data() as Appointment);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'appointments');
     }
-    const local = localStorage.getItem('cs_appointments');
-    if (local) return JSON.parse(local);
-    localStorage.setItem('cs_appointments', JSON.stringify(DEFAULT_APPOINTMENTS));
-    return DEFAULT_APPOINTMENTS;
   }
 
   async saveAppointment(appt: Appointment): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'appointments', appt.id), appt);
-        return;
-      } catch (e) {
-        console.error("Firestore saveAppointment failed", e);
-      }
+    try {
+      await setDoc(doc(db, 'appointments', appt.id), appt);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `appointments/${appt.id}`);
     }
-    const appts = await this.getAppointments();
-    const idx = appts.findIndex(a => a.id === appt.id);
-    if (idx >= 0) appts[idx] = appt;
-    else appts.push(appt);
-    localStorage.setItem('cs_appointments', JSON.stringify(appts));
   }
 
   async deleteAppointment(id: string): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await deleteDoc(doc(db, 'appointments', id));
-        return;
-      } catch (e) {
-        console.error("Firestore deleteAppointment failed", e);
-      }
+    try {
+      await deleteDoc(doc(db, 'appointments', id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, `appointments/${id}`);
     }
-    const appts = await this.getAppointments();
-    const updated = appts.filter(a => a.id !== id);
-    localStorage.setItem('cs_appointments', JSON.stringify(updated));
   }
 
   // Expenses
   async getExpenses(): Promise<Expense[]> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'expenses'));
-        if (querySnapshot.empty) {
-          for (const exp of DEFAULT_EXPENSES) {
-            await setDoc(doc(db, 'expenses', exp.id), exp);
-          }
-          return DEFAULT_EXPENSES;
-        }
-        return querySnapshot.docs.map(doc => doc.data() as Expense);
-      } catch (e) {
-        console.error("Firestore getExpenses failed", e);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'expenses'));
+      if (querySnapshot.empty) {
+        return [];
       }
+      return querySnapshot.docs.map(doc => doc.data() as Expense);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'expenses');
     }
-    const local = localStorage.getItem('cs_expenses');
-    if (local) return JSON.parse(local);
-    localStorage.setItem('cs_expenses', JSON.stringify(DEFAULT_EXPENSES));
-    return DEFAULT_EXPENSES;
   }
 
   async saveExpense(exp: Expense): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'expenses', exp.id), exp);
-        return;
-      } catch (e) {
-        console.error("Firestore saveExpense failed", e);
-      }
+    try {
+      await setDoc(doc(db, 'expenses', exp.id), exp);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `expenses/${exp.id}`);
     }
-    const exps = await this.getExpenses();
-    const idx = exps.findIndex(e => e.id === exp.id);
-    if (idx >= 0) exps[idx] = exp;
-    else exps.push(exp);
-    localStorage.setItem('cs_expenses', JSON.stringify(exps));
   }
 
   // Visit Records (Historical notes & photo cuts)
   async getVisitRecords(clientId?: string): Promise<VisitRecord[]> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        const querySnapshot = await getDocs(collection(db, 'visit_records'));
-        const records = querySnapshot.docs.map(doc => doc.data() as VisitRecord);
-        if (clientId) {
-          return records.filter(r => r.clientId === clientId).sort((a,b) => b.date.localeCompare(a.date));
-        }
-        return records.sort((a,b) => b.date.localeCompare(a.date));
-      } catch (e) {
-        console.error("Firestore getVisitRecords failed", e);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'visit_records'));
+      if (querySnapshot.empty) {
+        return [];
       }
+      const records = querySnapshot.docs.map(doc => doc.data() as VisitRecord);
+      if (clientId) {
+        return records.filter(r => r.clientId === clientId).sort((a,b) => b.date.localeCompare(a.date));
+      }
+      return records.sort((a,b) => b.date.localeCompare(a.date));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.LIST, 'visit_records');
     }
-    const local = localStorage.getItem('cs_visit_records');
-    let records: VisitRecord[] = local ? JSON.parse(local) : [];
-    if (!local) {
-      // Seed default client records
-      records = [
-        {
-          id: "vr_1",
-          clientId: "c1",
-          date: "2026-06-24",
-          barberId: "b1",
-          barberName: "Alex Rivera",
-          serviceName: "Combo Corte + Barba",
-          price: 380,
-          imageOfCut: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&q=80&w=300",
-          productsUsed: [{ productId: "p1", name: "Cera Premium Mate", qty: 1 }],
-          machineSettings: "Guarda #2 en laterales, fade bajo. Marcado de barba tradicional.",
-          notes: "Le gusta el fade muy bajo. Alérgico al tónico de mentol.",
-          rating: 5
-        },
-        {
-          id: "vr_2",
-          clientId: "c1",
-          date: "2026-05-15",
-          barberId: "b1",
-          barberName: "Alex Rivera",
-          serviceName: "Corte de Cabello Premium",
-          price: 250,
-          imageOfCut: "https://images.unsplash.com/photo-1621574539437-4b7cb63120b8?auto=format&fit=crop&q=80&w=300",
-          productsUsed: [],
-          machineSettings: "Guarda #1.5, fade medio.",
-          notes: "Prefiere peinado de lado con cera brillante.",
-          rating: 4
-        }
-      ];
-      localStorage.setItem('cs_visit_records', JSON.stringify(records));
-    }
-    if (clientId) {
-      return records.filter(r => r.clientId === clientId).sort((a,b) => b.date.localeCompare(a.date));
-    }
-    return records.sort((a,b) => b.date.localeCompare(a.date));
   }
 
   async saveVisitRecord(record: VisitRecord): Promise<void> {
     await this.init();
-    if (this.isFirebaseWorking) {
-      try {
-        await setDoc(doc(db, 'visit_records', record.id), record);
-        // Deduct product stock in Firestore if working
-        for (const p of record.productsUsed) {
-          try {
-            const pDoc = await getDoc(doc(db, 'products', p.productId));
-            if (pDoc.exists()) {
-              const currentStock = pDoc.data().stock;
-              await updateDoc(doc(db, 'products', p.productId), {
-                stock: Math.max(0, currentStock - p.qty)
-              });
-            }
-          } catch (e) {
-            console.error("Stock deduct failed for " + p.productId);
+    try {
+      await setDoc(doc(db, 'visit_records', record.id), record);
+      // Deduct product stock in Firestore if working
+      for (const p of record.productsUsed) {
+        try {
+          const pDoc = await getDoc(doc(db, 'products', p.productId));
+          if (pDoc.exists()) {
+            const currentStock = pDoc.data().stock;
+            await updateDoc(doc(db, 'products', p.productId), {
+              stock: Math.max(0, currentStock - p.qty)
+            });
           }
+        } catch (e) {
+          console.error("Stock deduct failed for " + p.productId, e);
         }
-        return;
-      } catch (e) {
-        console.error("Firestore saveVisitRecord failed", e);
       }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.WRITE, `visit_records/${record.id}`);
     }
-    const records = await this.getVisitRecords();
-    records.push(record);
-    localStorage.setItem('cs_visit_records', JSON.stringify(records));
-
-    // Deduct stock locally
-    const products = await this.getProducts();
-    for (const prodUsed of record.productsUsed) {
-      const pIdx = products.findIndex(p => p.id === prodUsed.productId);
-      if (pIdx >= 0) {
-        products[pIdx].stock = Math.max(0, products[pIdx].stock - prodUsed.qty);
-      }
-    }
-    localStorage.setItem('cs_products', JSON.stringify(products));
   }
 }
 

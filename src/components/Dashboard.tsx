@@ -24,6 +24,7 @@ import {
   Cell
 } from 'recharts';
 import { AppState } from '../lib/useAppContext';
+import { translations } from '../lib/translations';
 
 interface DashboardProps {
   state: AppState;
@@ -36,12 +37,15 @@ export default function Dashboard({ state }: DashboardProps) {
     products, 
     appointments, 
     expenses, 
-    setCurrentView 
+    setCurrentView,
+    language
   } = state;
+
+  const t = translations[language].dashboard;
 
   // Calculate stats
   const todayStr = new Date().toISOString().split('T')[0];
-  const formattedDate = new Date().toLocaleDateString('es-ES', { 
+  const formattedDate = new Date().toLocaleDateString(language === 'es' ? 'es-ES' : 'pt-BR', { 
     year: 'numeric', 
     month: 'long', 
     day: 'numeric' 
@@ -72,13 +76,13 @@ export default function Dashboard({ state }: DashboardProps) {
 
   // Hardcoded financial chart data (weekly trend)
   const chartData = [
-    { name: 'Lun', ingresos: 1200, gastos: 400 },
-    { name: 'Mar', ingresos: 1850, gastos: 600 },
-    { name: 'Mié', ingresos: 2400, gastos: 800 },
-    { name: 'Jue', ingresos: 3100, gastos: 500 },
-    { name: 'Vie', ingresos: 4800, gastos: 1200 },
-    { name: 'Sáb', ingresos: 5900, gastos: 1500 },
-    { name: 'Dom', ingresos: 0, gastos: 300 }
+    { name: language === 'es' ? 'Lun' : 'Seg', ingresos: 1200, gastos: 400 },
+    { name: language === 'es' ? 'Mar' : 'Ter', ingresos: 1850, gastos: 600 },
+    { name: language === 'es' ? 'Mié' : 'Qua', ingresos: 2400, gastos: 800 },
+    { name: language === 'es' ? 'Jue' : 'Qui', ingresos: 3100, gastos: 500 },
+    { name: language === 'es' ? 'Vie' : 'Sex', ingresos: 4800, gastos: 1200 },
+    { name: language === 'es' ? 'Sáb' : 'Sáb', ingresos: 5900, gastos: 1500 },
+    { name: language === 'es' ? 'Dom' : 'Dom', ingresos: 0, gastos: 300 }
   ];
 
   const totalWeeklyRevenue = chartData.reduce((sum, item) => sum + item.ingresos, 0);
@@ -90,9 +94,15 @@ export default function Dashboard({ state }: DashboardProps) {
       {/* Header and Welcome */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <span className="text-gold font-mono tracking-widest uppercase text-xs font-bold">Resumen de Negocio</span>
-          <h2 className="font-display text-4xl text-white">PANEL DE CONTROL</h2>
-          <p className="text-gray-400 text-sm">Bienvenido de nuevo, Propietario. Estas son las métricas de rentabilidad y operación de hoy.</p>
+          <span className="text-gold font-mono tracking-widest uppercase text-xs font-bold">
+            {language === 'es' ? 'Resumen de Negocio' : 'Resumo do Negócio'}
+          </span>
+          <h2 className="font-display text-4xl text-white">{t.title}</h2>
+          <p className="text-gray-400 text-sm">
+            {language === 'es' 
+              ? 'Bienvenido de nuevo, Propietario. Estas son las métricas de rentabilidad y operación de hoy.' 
+              : 'Bem-vindo de volta, Proprietário. Estas são as métricas de faturamento e operação de hoje.'}
+          </p>
         </div>
         <div className="flex items-center gap-3 bg-surface-light px-4 py-2 rounded-xl border border-surface-border">
           <Calendar className="text-gold w-4 h-4" />
@@ -108,10 +118,12 @@ export default function Dashboard({ state }: DashboardProps) {
             <span className="p-2 bg-gold/10 rounded-xl text-gold">
               <DollarSign className="w-5 h-5" />
             </span>
-            <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">${completedRevenueToday.toFixed(2)} cobrados</span>
+            <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
+              ${completedRevenueToday.toFixed(2)} {t.revenueSub}
+            </span>
           </div>
           <div>
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Ingresos Estimados (Hoy)</p>
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t.estimatedRevenue}</p>
             <h3 className="font-display text-3xl text-white mt-1">${estimatedRevenueToday.toFixed(2)}</h3>
           </div>
         </div>
@@ -123,15 +135,17 @@ export default function Dashboard({ state }: DashboardProps) {
               <Calendar className="w-5 h-5" />
             </span>
             <span className="text-[10px] font-bold text-gray-400 bg-white/5 px-2 py-0.5 rounded-full">
-              {completedToday} completas
+              {completedToday} {language === 'es' ? 'completas' : 'concluídos'}
             </span>
           </div>
           <div>
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Citas de Hoy</p>
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t.todayAppointments}</p>
             <h3 className="font-display text-3xl text-white mt-1">
-              {totalAppointmentsToday} {totalAppointmentsToday === 1 ? 'cita' : 'citas'}
+              {totalAppointmentsToday} {totalAppointmentsToday === 1 
+                ? (language === 'es' ? 'cita' : 'agendamento') 
+                : (language === 'es' ? 'citas' : 'agendamentos')}
             </h3>
-            <p className="text-[10px] text-gray-400 mt-1">{pendingToday} pendientes por atender</p>
+            <p className="text-[10px] text-gray-400 mt-1">{pendingToday} {t.todayAppointmentsSub}</p>
           </div>
         </div>
 
@@ -142,13 +156,17 @@ export default function Dashboard({ state }: DashboardProps) {
               <TrendingUp className="w-5 h-5" />
             </span>
             <span className="text-[10px] font-bold text-gold bg-gold/10 px-2 py-0.5 rounded-full">
-              {occupationPercent > 75 ? 'Muy Alta' : occupationPercent > 40 ? 'Media' : 'Baja'}
+              {occupationPercent > 75 
+                ? (language === 'es' ? 'Muy Alta' : 'Muito Alta') 
+                : occupationPercent > 40 
+                  ? (language === 'es' ? 'Media' : 'Média') 
+                  : (language === 'es' ? 'Baja' : 'Baixa')}
             </span>
           </div>
           <div>
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Ocupación de Agenda</p>
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t.occupation}</p>
             <h3 className="font-display text-3xl text-white mt-1">{occupationPercent}%</h3>
-            <p className="text-[10px] text-gray-400 mt-1">{totalAppointmentsToday} / 10 turnos reservados</p>
+            <p className="text-[10px] text-gray-400 mt-1">{totalAppointmentsToday} / 10 {t.occupationSub}</p>
           </div>
         </div>
 
@@ -159,13 +177,13 @@ export default function Dashboard({ state }: DashboardProps) {
               <Users className="w-5 h-5" />
             </span>
             <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full">
-              {clients.length} totales en CRM
+              {clients.length} {language === 'es' ? 'totales en CRM' : 'totais no CRM'}
             </span>
           </div>
           <div>
-            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">Nuevos Clientes</p>
+            <p className="text-gray-400 text-xs font-semibold uppercase tracking-wider">{t.newClients}</p>
             <h3 className="font-display text-3xl text-white mt-1">{newClientsCount}</h3>
-            <p className="text-[10px] text-gray-400 mt-1">Con membresía o primera visita</p>
+            <p className="text-[10px] text-gray-400 mt-1">{t.newClientsSub}</p>
           </div>
         </div>
       </div>
@@ -177,9 +195,9 @@ export default function Dashboard({ state }: DashboardProps) {
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-display text-xl text-white flex items-center gap-2">
               <BarChart2 className="text-gold w-5 h-5" />
-              TENDENCIA SEMANAL DE INGRESOS
+              {t.weeklyTrend}
             </h4>
-            <span className="text-xs text-gray-400">Rango: Semana Actual</span>
+            <span className="text-xs text-gray-400">{t.weeklyTrendRange}</span>
           </div>
           <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -197,7 +215,7 @@ export default function Dashboard({ state }: DashboardProps) {
                   contentStyle={{ backgroundColor: '#121212', borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}
                   labelStyle={{ fontWeight: 'bold', color: '#c9a84c' }}
                 />
-                <Area type="monotone" dataKey="ingresos" stroke="#c9a84c" strokeWidth={2} fillOpacity={1} fill="url(#colorIngresos)" name="Ingresos ($)" />
+                <Area type="monotone" dataKey="ingresos" stroke="#c9a84c" strokeWidth={2} fillOpacity={1} fill="url(#colorIngresos)" name={language === 'es' ? 'Ingresos ($)' : 'Faturamento (R$)'} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -211,39 +229,41 @@ export default function Dashboard({ state }: DashboardProps) {
             <div className="flex justify-between items-center mb-4 relative z-10">
               <h4 className="font-display text-xl text-gold flex items-center gap-2">
                 <Cpu className="text-gold w-5 h-5 animate-pulse" />
-                CONSEJERO AI CORTE_SMART
+                {t.aiAdvisor}
               </h4>
-              <span className="text-[9px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-bold animate-pulse">ANALIZANDO</span>
+              <span className="text-[9px] bg-gold/20 text-gold px-2 py-0.5 rounded-full font-bold animate-pulse">
+                {t.aiAdvisorAnalyzing}
+              </span>
             </div>
             <p className="text-gray-300 text-sm italic leading-relaxed mb-4 relative z-10">
-              &ldquo;Se detecta una alta demanda de 'Fade + Barba' para este sábado. Sugiero habilitar un barbero extra de 10:00 am a 2:00 pm para capturar $1,500 MXN adicionales en walk-ins.&rdquo;
+              {t.aiAdvisorText}
             </p>
             <button 
-              onClick={() => alert("Sugerencia aplicada. Se ha enviado una notificación push al barbero de guardia.")}
+              onClick={() => alert(language === 'es' ? "Sugerencia aplicada. Se ha enviado una notificación push al barbero de guardia." : "Sugestão aplicada. Uma notificação push foi enviada ao barbeiro de plantão.")}
               className="w-full py-2 border border-gold text-gold hover:bg-gold hover:text-black font-semibold rounded-xl text-xs tracking-wider uppercase transition-all relative z-10 cursor-pointer"
             >
-              Aplicar Sugerencia
+              {t.aiApply}
             </button>
           </div>
 
           {/* Quick Metrics */}
           <div className="bg-surface-light p-5 rounded-2xl border border-surface-border flex-1 flex flex-col justify-between">
             <div>
-              <h4 className="font-display text-lg text-white mb-2">RESUMEN FINANCIERO</h4>
-              <p className="text-gray-400 text-xs mb-4">Estimación de rentabilidad de la semana en curso.</p>
+              <h4 className="font-display text-lg text-white mb-2">{t.financialSummary}</h4>
+              <p className="text-gray-400 text-xs mb-4">{t.financialSummarySub}</p>
             </div>
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Ingresos Totales:</span>
+                <span className="text-gray-400">{t.totalWeeklyRevenue}</span>
                 <span className="text-white font-mono font-semibold">${totalWeeklyRevenue.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Gastos Estimados:</span>
+                <span className="text-gray-400">{t.totalWeeklyExpenses}</span>
                 <span className="text-red-400 font-mono font-semibold">-${totalWeeklyExpenses.toFixed(2)}</span>
               </div>
               <hr className="border-white/10" />
               <div className="flex justify-between text-sm">
-                <span className="text-gold font-bold">Ganancia Neta:</span>
+                <span className="text-gold font-bold">{t.netProfit}</span>
                 <span className="text-green-400 font-mono font-bold">${netProfit.toFixed(2)}</span>
               </div>
             </div>
@@ -259,19 +279,19 @@ export default function Dashboard({ state }: DashboardProps) {
             <div className="flex justify-between items-center mb-4">
               <h4 className="font-display text-xl text-white flex items-center gap-2">
                 <AlertTriangle className="text-red-400 w-5 h-5" />
-                STOCK BAJO CRÍTICO
+                {t.criticalStock}
               </h4>
               <button 
                 onClick={() => setCurrentView('inventario')}
                 className="text-gold text-xs font-semibold hover:underline flex items-center gap-1"
               >
-                Ver todo <ArrowRight className="w-3 h-3" />
+                {t.seeAll} <ArrowRight className="w-3 h-3" />
               </button>
             </div>
             <div className="space-y-3">
               {criticalStockProducts.length === 0 ? (
                 <div className="text-center py-6 text-gray-500 text-sm">
-                  No hay alertas de stock críticas en este momento. ¡Todo en orden!
+                  {t.criticalStockSub}
                 </div>
               ) : (
                 criticalStockProducts.map(p => (
@@ -281,8 +301,8 @@ export default function Dashboard({ state }: DashboardProps) {
                       <p className="text-gray-400 text-[10px] uppercase font-mono">{p.provider}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-red-400 font-bold text-sm">{p.stock} unidades</p>
-                      <p className="text-gray-400 text-[10px]">Mínimo: {p.minStock}</p>
+                      <p className="text-red-400 font-bold text-sm">{p.stock} {t.stockUnits}</p>
+                      <p className="text-gray-400 text-[10px]">{t.stockMin}: {p.minStock}</p>
                     </div>
                   </div>
                 ))
@@ -294,7 +314,7 @@ export default function Dashboard({ state }: DashboardProps) {
               onClick={() => setCurrentView('inventario')}
               className="w-full text-center py-2 bg-surface-dark hover:bg-white/5 border border-surface-border text-gray-300 rounded-xl text-xs font-semibold transition-all"
             >
-              Abastecer Inventario
+              {t.restockBtn}
             </button>
           </div>
         </div>
@@ -304,20 +324,20 @@ export default function Dashboard({ state }: DashboardProps) {
           <div className="flex justify-between items-center mb-6">
             <h4 className="font-display text-xl text-white flex items-center gap-2">
               <Calendar className="text-gold w-5 h-5" />
-              PRÓXIMAS CITAS DEL DÍA
+              {t.nextAppointments}
             </h4>
             <button 
               onClick={() => setCurrentView('agenda')}
               className="text-gold text-xs font-semibold hover:underline flex items-center gap-1"
             >
-              Abrir Agenda Completa <ArrowRight className="w-3 h-3" />
+              {language === 'es' ? 'Abrir Agenda Completa' : 'Abrir Agenda Completa'} <ArrowRight className="w-3 h-3" />
             </button>
           </div>
           
           <div className="space-y-4">
             {appointments.length === 0 ? (
               <div className="text-center py-10 text-gray-500 text-sm">
-                No hay citas programadas para hoy.
+                {t.nextAppointmentsSub}
               </div>
             ) : (
               appointments.slice(0, 3).map((appt, idx) => (
@@ -333,7 +353,7 @@ export default function Dashboard({ state }: DashboardProps) {
                         <span className="text-xs text-gray-400">| {appt.clientName}</span>
                       </div>
                       <p className="text-white text-xs font-semibold">{appt.serviceName}</p>
-                      <p className="text-[10px] text-gray-400">Asignado a: {appt.barberId === 'b1' ? 'Alex Rivera' : appt.barberId === 'b2' ? 'Mateo Costa' : appt.barberId === 'b3' ? 'Sofía Luna' : 'Carlos Vera'}</p>
+                      <p className="text-[10px] text-gray-400">{t.assignedTo}: {appt.barberId === 'b1' ? 'Alex Rivera' : appt.barberId === 'b2' ? 'Mateo Costa' : appt.barberId === 'b3' ? 'Sofía Luna' : 'Carlos Vera'}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className="text-gold font-mono font-bold text-sm">${appt.price.toFixed(2)}</span>
@@ -342,7 +362,7 @@ export default function Dashboard({ state }: DashboardProps) {
                         appt.status === 'pending' ? 'bg-yellow-500/10 text-yellow-400' :
                         'bg-blue-500/10 text-blue-400'
                       }`}>
-                        {appt.status === 'confirmed' ? 'CONFIRMADA' : appt.status === 'pending' ? 'PENDIENTE' : 'COMPLETADA'}
+                        {appt.status === 'confirmed' ? t.statusConfirmed : appt.status === 'pending' ? t.statusPending : t.statusCompleted}
                       </span>
                     </div>
                   </div>

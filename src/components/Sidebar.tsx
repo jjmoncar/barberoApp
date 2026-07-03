@@ -12,6 +12,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { UserRole } from '../lib/useAppContext';
+import { AppLanguage, translations } from '../lib/translations';
 
 interface SidebarProps {
   currentView: string;
@@ -19,6 +20,8 @@ interface SidebarProps {
   role: UserRole;
   setRole: (role: UserRole) => void;
   barbershopName: string;
+  language: AppLanguage;
+  setLanguage: (lang: AppLanguage) => void;
 }
 
 export default function Sidebar({ 
@@ -26,49 +29,53 @@ export default function Sidebar({
   setCurrentView, 
   role, 
   setRole, 
-  barbershopName 
+  barbershopName,
+  language,
+  setLanguage
 }: SidebarProps) {
+
+  const t = translations[language].sidebar;
 
   const navItems = [
     { 
       id: 'dashboard', 
-      label: 'Panel de Control', 
+      label: t.dashboard, 
       icon: LayoutDashboard, 
       allowed: ['owner'] 
     },
     { 
       id: 'agenda', 
-      label: 'Agenda Semanal', 
+      label: t.agenda, 
       icon: CalendarDays, 
       allowed: ['owner', 'barber'] 
     },
     { 
       id: 'clientes', 
-      label: 'Fichas de Clientes', 
+      label: t.clientes, 
       icon: Users, 
       allowed: ['owner', 'barber'] 
     },
     { 
       id: 'inventario', 
-      label: 'Inventario de Stock', 
+      label: t.inventario, 
       icon: PackageSearch, 
       allowed: ['owner'] 
     },
     { 
       id: 'ai_explorer', 
-      label: 'Escáner Facial IA', 
+      label: t.aiExplorer, 
       icon: Sparkles, 
       allowed: ['owner', 'barber', 'client'] 
     },
     { 
       id: 'config', 
-      label: 'Ajustes de Negocio', 
+      label: t.config, 
       icon: Settings, 
       allowed: ['owner'] 
     },
     { 
       id: 'public_booking', 
-      label: 'Página de Reservas', 
+      label: t.publicBooking, 
       icon: ExternalLink, 
       allowed: ['owner', 'barber', 'client'] 
     }
@@ -79,7 +86,7 @@ export default function Sidebar({
   return (
     <aside className="fixed left-0 top-0 h-full w-[280px] bg-surface-dark border-r border-surface-border flex flex-col p-6 z-40">
       {/* Brand Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-gold/10 border border-gold/30 rounded-xl flex items-center justify-center">
           <Scissors className="text-gold w-5 h-5" />
         </div>
@@ -89,10 +96,41 @@ export default function Sidebar({
         </div>
       </div>
 
+      {/* Language Switcher Selector */}
+      <div className="mb-4 p-3 bg-surface-light rounded-xl border border-surface-border">
+        <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
+          {t.languageLabel}
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button 
+            onClick={() => setLanguage('es')}
+            className={`text-xs py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
+              language === 'es' 
+                ? 'bg-gold/20 text-gold border border-gold/40' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <span>🇪🇸</span>
+            <span>ES</span>
+          </button>
+          <button 
+            onClick={() => setLanguage('pt')}
+            className={`text-xs py-1.5 px-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all ${
+              language === 'pt' 
+                ? 'bg-gold/20 text-gold border border-gold/40' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5 border border-transparent'
+            }`}
+          >
+            <span>🇧🇷</span>
+            <span>PT-BR</span>
+          </button>
+        </div>
+      </div>
+
       {/* Role Switcher Selector */}
       <div className="mb-6 p-3 bg-surface-light rounded-xl border border-surface-border">
         <label className="block text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-2">
-          Rol de Acceso Activo:
+          {t.roleLabel}
         </label>
         <div className="grid grid-cols-3 gap-1">
           <button 
@@ -106,7 +144,7 @@ export default function Sidebar({
                 : 'text-gray-300 hover:bg-white/5'
             }`}
           >
-            Dueño
+            {t.owner}
           </button>
           <button 
             onClick={() => {
@@ -119,7 +157,7 @@ export default function Sidebar({
                 : 'text-gray-300 hover:bg-white/5'
             }`}
           >
-            Barbero
+            {t.barber}
           </button>
           <button 
             onClick={() => {
@@ -132,13 +170,13 @@ export default function Sidebar({
                 : 'text-gray-300 hover:bg-white/5'
             }`}
           >
-            Cliente
+            {t.client}
           </button>
         </div>
       </div>
 
       {/* Navigation List */}
-      <nav className="flex-1 flex flex-col gap-2">
+      <nav className="flex-1 flex flex-col gap-2 overflow-y-auto pr-1">
         {filteredNavItems.map(item => {
           const IconComponent = item.icon;
           const isActive = currentView === item.id;
@@ -167,7 +205,7 @@ export default function Sidebar({
           </div>
           <div className="overflow-hidden">
             <p className="text-xs font-semibold text-white truncate">
-              {role === 'owner' ? 'Propietario VIP' : role === 'barber' ? 'Barbero Master' : 'Cliente Registrado'}
+              {role === 'owner' ? t.ownerVIP : role === 'barber' ? t.barberMaster : t.clientRegistered}
             </p>
             <p className="text-[10px] text-gray-400 font-mono">
               {role === 'owner' ? 'jjmoncar@gmail.com' : role === 'barber' ? 'Barbero #1' : 'CorteSmart App'}
@@ -176,11 +214,11 @@ export default function Sidebar({
         </div>
 
         <button 
-          onClick={() => alert("Sesión finalizada. En un ambiente real, esto borraría la cookie de autenticación.")}
+          onClick={() => alert(language === 'es' ? "Sesión finalizada." : "Sessão encerrada.")}
           className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-500/5 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          <span>Cerrar Sesión</span>
+          <span>{t.logout}</span>
         </button>
       </div>
     </aside>

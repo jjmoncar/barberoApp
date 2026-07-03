@@ -15,13 +15,15 @@ import {
 } from 'lucide-react';
 import { AppState } from '../lib/useAppContext';
 import { FaceAnalysis, RecommendedStyle } from '../types';
+import { translations } from '../lib/translations';
 
 interface AIExplorerProps {
   state: AppState;
 }
 
 export default function AIExplorer({ state }: AIExplorerProps) {
-  const { clients, saveClient, role } = state;
+  const { clients, saveClient, role, language } = state;
+  const t = translations[language].aiExplorer;
 
   const [image, setImage] = useState<string | null>(null);
   const [scanning, setScanning] = useState<boolean>(false);
@@ -58,7 +60,9 @@ export default function AIExplorer({ state }: AIExplorerProps) {
       }
     } catch (err) {
       console.error("No se pudo acceder a la cámara:", err);
-      alert("No se pudo iniciar la cámara. Por favor asegúrate de dar permisos de cámara o sube un archivo desde tu dispositivo.");
+      alert(language === 'pt' 
+        ? "Não foi possível iniciar a câmera. Por favor, verifique as permissões de acesso ou envie um arquivo."
+        : "No se pudo iniciar la cámara. Por favor asegúrate de dar permisos de cámara o sube un archivo desde tu dispositivo.");
       setCameraActive(false);
     }
   };
@@ -107,7 +111,14 @@ export default function AIExplorer({ state }: AIExplorerProps) {
     setAnalysisResult(null);
 
     // Simulated scanning status text sequences to look deeply technical & premium
-    const statusMessages = [
+    const statusMessages = language === 'pt' ? [
+      "Mapeando estrutura óssea e plano sagital...",
+      "Calculando assimetria geométrica das maçãs do rosto...",
+      "Detectando nascimento e densidade da linha capilar...",
+      "Classificando textura e índice folicular...",
+      "Consultando modelos neurais Gemini 2.5 Pro...",
+      "Gerando recomendações adaptativas em português..."
+    ] : [
       "Mapeando estructura ósea y plano sagital...",
       "Calculando asimetría geométrica de pómulos...",
       "Detectando nacimiento y densidad de línea capilar...",
@@ -132,7 +143,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ image })
+        body: JSON.stringify({ image, language })
       });
 
       const data = await response.json();
@@ -140,7 +151,9 @@ export default function AIExplorer({ state }: AIExplorerProps) {
       setAnalysisResult(data);
     } catch (err) {
       console.error("Face scan API error", err);
-      alert("Ocurrió un error al contactar al motor de IA. Cargando resultados inteligentes del optimizador local.");
+      alert(language === 'pt' 
+        ? "Ocorreu um erro ao conectar ao motor de IA. Carregando resultados inteligentes do otimizador local."
+        : "Ocurrió un error al contactar al motor de IA. Cargando resultados inteligentes del optimizador local.");
     } finally {
       clearInterval(interval);
       setScanning(false);
@@ -161,7 +174,9 @@ export default function AIExplorer({ state }: AIExplorerProps) {
     };
 
     await saveClient(updatedClient);
-    alert(`💾 ¡Perfil guardado con éxito!\nSe ha guardado el análisis facial (Rostro ${analysisResult.faceShape}) directamente en el expediente del cliente ${client.name}.`);
+    alert(language === 'pt'
+      ? `💾 Perfil salvo com sucesso!\nO diagnóstico facial (Formato ${analysisResult.faceShape}) foi salvo diretamente na ficha de ${client.name}.`
+      : `💾 ¡Perfil guardado con éxito!\nSe ha guardado el análisis facial (Rostro ${analysisResult.faceShape}) directamente en el expediente del cliente ${client.name}.`);
     setSelectedClientIdForSave('');
   };
 
@@ -191,11 +206,11 @@ export default function AIExplorer({ state }: AIExplorerProps) {
       {/* Title */}
       <div className="text-center space-y-2">
         <span className="text-gold font-mono tracking-widest uppercase text-xs font-bold flex items-center justify-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-gold animate-spin" /> Motor Biométrico Gemini Vision
+          <Sparkles className="w-4 h-4 text-gold animate-spin" /> {language === 'es' ? 'Motor Biométrico Gemini Vision' : 'Motor Biométrico Gemini Vision'}
         </span>
-        <h2 className="font-display text-4xl text-white">ESCÁNER FACIAL E IA DE RECOMENDACIÓN</h2>
+        <h2 className="font-display text-4xl text-white">{t.title}</h2>
         <p className="text-gray-400 text-sm max-w-xl mx-auto">
-          Toma una foto de tu rostro. Nuestro motor inteligente mapeará tus proporciones óseas para sugerirte los cortes que más favorecen tu simetría.
+          {t.subtitle}
         </p>
       </div>
 
@@ -223,7 +238,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
             ) : (
               <div className="text-center p-6 space-y-3">
                 <Scan className="w-12 h-12 text-gold mx-auto animate-pulse" />
-                <p className="text-xs text-gray-500 font-mono">CÁMARA APAGADA</p>
+                <p className="text-xs text-gray-500 font-mono">{language === 'es' ? 'CÁMARA APAGADA' : 'CÂMERA DESLIGADA'}</p>
               </div>
             )}
           </div>
@@ -233,7 +248,9 @@ export default function AIExplorer({ state }: AIExplorerProps) {
             <div className="w-full bg-surface-dark border border-surface-border p-4 rounded-xl flex items-center gap-3 mb-6 animate-pulse">
               <Cpu className="w-5 h-5 text-gold animate-spin" />
               <div className="flex-1">
-                <p className="text-[10px] text-gold uppercase font-mono tracking-widest">Analizando Biometría</p>
+                <p className="text-[10px] text-gold uppercase font-mono tracking-widest">
+                  {language === 'es' ? 'Analizando Biometría' : 'Analisando Biometria'}
+                </p>
                 <p className="text-white text-xs mt-1 transition-all">{scanStatusText}</p>
               </div>
             </div>
@@ -248,7 +265,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                   onClick={capturePhoto}
                   className="w-full py-3 bg-gold text-black hover:bg-gold-light font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all"
                 >
-                  <Camera className="w-4 h-4" /> Tomar Captura
+                  <Camera className="w-4 h-4" /> {language === 'es' ? 'Tomar Captura' : 'Tirar Foto'}
                 </button>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
@@ -256,10 +273,10 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                     onClick={startCamera}
                     className="py-2.5 bg-surface-dark border border-surface-border hover:bg-white/5 text-gray-300 font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all"
                   >
-                    <Camera className="w-4 h-4 text-gold" /> Iniciar Cámara
+                    <Camera className="w-4 h-4 text-gold" /> {language === 'es' ? 'Iniciar Cámara' : 'Iniciar Câmera'}
                   </button>
                   <label className="py-2.5 bg-surface-dark border border-surface-border hover:bg-white/5 text-gray-300 font-bold rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer transition-all text-center">
-                    <Upload className="w-4 h-4 text-gold" /> Subir Foto
+                    <Upload className="w-4 h-4 text-gold" /> {language === 'es' ? 'Subir Foto' : 'Enviar Foto'}
                     <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
                   </label>
                 </div>
@@ -271,7 +288,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                   onClick={triggerFaceScan}
                   className="w-full py-3 bg-gold hover:bg-gold-light text-black font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg flex items-center justify-center gap-2 cursor-pointer transition-all gold-glow-strong"
                 >
-                  <Sparkles className="w-4 h-4" /> Ejecutar Diagnóstico AI
+                  <Sparkles className="w-4 h-4" /> {language === 'es' ? 'Ejecutar Diagnóstico AI' : 'Executar Diagnóstico AI'}
                 </button>
               )}
             </div>
@@ -292,7 +309,9 @@ export default function AIExplorer({ state }: AIExplorerProps) {
               <div className="md:col-span-4 border-b border-white/5 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-gold" />
-                  <span className="text-xs text-gray-300 font-medium">¿Deseas registrar este análisis en el expediente de algún cliente?</span>
+                  <span className="text-xs text-gray-300 font-medium">
+                    {language === 'es' ? '¿Deseas registrar este análisis en el expediente de algún cliente?' : 'Deseja salvar este diagnóstico na ficha de um cliente?'}
+                  </span>
                 </div>
                 <div className="flex gap-2 w-full md:w-auto">
                   <select 
@@ -300,7 +319,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                     onChange={(e) => setSelectedClientIdForSave(e.target.value)}
                     className="bg-surface-dark border border-surface-border text-white text-xs rounded-xl py-1.5 px-3 focus:outline-none focus:border-gold"
                   >
-                    <option value="">-- Selecciona Cliente --</option>
+                    <option value="">{language === 'es' ? '-- Selecciona Cliente --' : '-- Selecionar Cliente --'}</option>
                     {clients.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
@@ -310,29 +329,37 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                     disabled={!selectedClientIdForSave}
                     className="py-1.5 px-3 bg-gold hover:bg-gold-light disabled:bg-gray-700 disabled:text-gray-400 text-black font-bold text-xs uppercase rounded-xl tracking-wider transition-all cursor-pointer flex items-center gap-1"
                   >
-                    <Bookmark className="w-3.5 h-3.5" /> Guardar
+                    <Bookmark className="w-3.5 h-3.5" /> {language === 'es' ? 'Guardar' : 'Salvar'}
                   </button>
                 </div>
               </div>
             )}
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Forma de Rostro</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                {language === 'es' ? 'Forma de Rostro' : 'Formato do Rosto'}
+              </span>
               <h3 className="font-display text-2xl text-gold mt-1">{analysisResult.faceShape}</h3>
             </div>
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Línea de Cabello</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                {language === 'es' ? 'Línea de Cabello' : 'Linha de Cabelo'}
+              </span>
               <h3 className="font-display text-2xl text-white mt-1">{analysisResult.hairLine}</h3>
             </div>
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Textura Capilar</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                {language === 'es' ? 'Textura Capilar' : 'Textura Capilar'}
+              </span>
               <h3 className="font-display text-2xl text-white mt-1">{analysisResult.hairTexture}</h3>
             </div>
 
             <div className="flex flex-col items-center md:items-start text-center md:text-left">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Rasgos Destacados</span>
+              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                {language === 'es' ? 'Rasgos Destacados' : 'Traços Marcantes'}
+              </span>
               <div className="flex flex-wrap gap-1 mt-2">
                 {analysisResult.prominentFeatures.map(f => (
                   <span key={f} className="text-[9px] bg-white/5 border border-white/10 px-2 py-0.5 rounded text-gray-300 font-medium">{f}</span>
@@ -344,7 +371,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
           {/* Curated Recommendations Cards Grid */}
           <div className="space-y-4">
             <h4 className="font-display text-2xl text-white tracking-wide flex items-center gap-2">
-              <Sparkles className="text-gold w-5 h-5" /> ESTILOS RECOMENDADOS ({analysisResult.recommendations.length})
+              <Sparkles className="text-gold w-5 h-5" /> {language === 'es' ? `ESTILOS RECOMENDADOS (${analysisResult.recommendations.length})` : `ESTILOS RECOMENDADOS (${analysisResult.recommendations.length})`}
             </h4>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -361,7 +388,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                     <img src={getCutImage(style.imageAlt)} alt={style.name} className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-transparent to-transparent"></div>
                     <div className="absolute bottom-3 right-3 bg-gold/10 text-gold border border-gold/30 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                      Mantenimiento: {style.maintenance}
+                      {language === 'es' ? 'Mantenimiento' : 'Manutenção'}: {style.maintenance}
                     </div>
                   </div>
 
@@ -373,7 +400,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
                       
                       <div className="mt-3 bg-surface-dark p-3 rounded-xl border border-surface-border">
                         <p className="text-[10px] text-gold font-bold uppercase tracking-wider flex items-center gap-1">
-                          <Eye className="w-3.5 h-3.5 text-gold" /> Justificación AI
+                          <Eye className="w-3.5 h-3.5 text-gold" /> {language === 'es' ? 'Justificación AI' : 'Justificativa AI'}
                         </p>
                         <p className="text-gray-300 text-xs mt-1 leading-relaxed">{style.explanation}</p>
                       </div>
@@ -393,7 +420,7 @@ export default function AIExplorer({ state }: AIExplorerProps) {
               }}
               className="py-2.5 px-6 bg-surface-dark border border-surface-border hover:bg-white/5 text-gray-400 hover:text-white font-semibold rounded-xl text-xs uppercase tracking-wider transition-all flex items-center gap-2 mx-auto cursor-pointer"
             >
-              <RefreshCw className="w-4 h-4" /> Escanear Nuevo Rostro
+              <RefreshCw className="w-4 h-4" /> {language === 'es' ? 'Escanear Nuevo Rostro' : 'Escanear Novo Rosto'}
             </button>
           </div>
         </div>

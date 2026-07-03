@@ -1,0 +1,134 @@
+{
+  "entities": {
+    "BarbershopConfig": {
+      "title": "BarbershopConfig",
+      "description": "General settings and configuration of the barbershop",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "logo": { "type": "string" },
+        "workingHours": { "type": "array" },
+        "services": { "type": "array" },
+        "barbers": { "type": "array" }
+      },
+      "required": ["name", "address", "phone", "logo", "workingHours", "services", "barbers"]
+    },
+    "Client": {
+      "title": "Client",
+      "description": "Profile of a registered client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "points": { "type": "number" },
+        "tier": { "type": "string", "enum": ["Nuevo", "Frecuente", "VIP"] },
+        "tags": { "type": "array" },
+        "visitsCount": { "type": "number" },
+        "lastAnalysisDate": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "email", "points", "tier", "tags", "visitsCount"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Inventory product details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "cost": { "type": "number" },
+        "price": { "type": "number" },
+        "provider": { "type": "string" }
+      },
+      "required": ["id", "name", "category", "stock", "minStock", "cost", "price", "provider"]
+    },
+    "Appointment": {
+      "title": "Appointment",
+      "description": "A scheduled haircut or service appointment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "duration": { "type": "number" },
+        "date": { "type": "string" },
+        "timeSlot": { "type": "string" },
+        "barberId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "walkIn": { "type": "boolean" }
+      },
+      "required": ["id", "clientId", "clientName", "clientPhone", "serviceId", "serviceName", "price", "duration", "date", "timeSlot", "barberId", "status"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Financial expense record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" }
+      },
+      "required": ["id", "date", "description", "category", "amount"]
+    },
+    "VisitRecord": {
+      "title": "VisitRecord",
+      "description": "Historical record of a client visit",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "date": { "type": "string" },
+        "barberId": { "type": "string" },
+        "barberName": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "imageOfCut": { "type": "string" },
+        "productsUsed": { "type": "array" },
+        "machineSettings": { "type": "string" },
+        "notes": { "type": "string" },
+        "rating": { "type": "number" }
+      },
+      "required": ["id", "clientId", "date", "barberId", "barberName", "serviceName", "price", "productsUsed"]
+    }
+  },
+  "firestore": {
+    "config/barbershop": {
+      "schema": "BarbershopConfig",
+      "description": "Stores the general configurations of the barbershop"
+    },
+    "clients/{clientId}": {
+      "schema": "Client",
+      "description": "Stores individual client files"
+    },
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Stores inventory items"
+    },
+    "appointments/{appointmentId}": {
+      "schema": "Appointment",
+      "description": "Stores scheduled salon appointments"
+    },
+    "expenses/{expenseId}": {
+      "schema": "Expense",
+      "description": "Stores financial expenses for reporting"
+    },
+    "visit_records/{recordId}": {
+      "schema": "VisitRecord",
+      "description": "Stores historic visit details and haircut visual specs"
+    }
+  }
+}

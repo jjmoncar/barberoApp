@@ -1,0 +1,139 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE SECURITY PRIMITIVES ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- ENTITY SCHEMAS & VALIDATION BLUEPRINTS ---
+
+    function isValidConfig(data) {
+      return data.keys().hasAll(['name', 'address', 'phone', 'logo', 'workingHours', 'services', 'barbers'])
+        && data.name is string && data.name.size() <= 100
+        && data.address is string && data.address.size() <= 200
+        && data.phone is string && data.phone.size() <= 30
+        && data.logo is string && data.logo.size() <= 500
+        && data.workingHours is list
+        && data.services is list
+        && data.barbers is list;
+    }
+
+    function isValidClient(data) {
+      return data.keys().hasAll(['id', 'name', 'phone', 'email', 'points', 'tier', 'tags', 'visitsCount'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() <= 100
+        && data.phone is string && data.phone.size() <= 30
+        && data.email is string && data.email.size() <= 100
+        && data.points is number && data.points >= 0
+        && data.tier in ['Nuevo', 'Frecuente', 'VIP']
+        && data.tags is list
+        && data.visitsCount is number && data.visitsCount >= 0;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['id', 'name', 'category', 'stock', 'minStock', 'cost', 'price', 'provider'])
+        && isValidId(data.id)
+        && data.name is string && data.name.size() <= 100
+        && data.category is string && data.category.size() <= 100
+        && data.stock is number && data.stock >= 0
+        && data.minStock is number && data.minStock >= 0
+        && data.cost is number && data.cost >= 0
+        && data.price is number && data.price >= 0
+        && data.provider is string && data.provider.size() <= 100;
+    }
+
+    function isValidAppointment(data) {
+      return data.keys().hasAll(['id', 'clientId', 'clientName', 'clientPhone', 'serviceId', 'serviceName', 'price', 'duration', 'date', 'timeSlot', 'barberId', 'status'])
+        && isValidId(data.id)
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.clientName is string && data.clientName.size() <= 100
+        && data.clientPhone is string && data.clientPhone.size() <= 30
+        && data.serviceId is string && data.serviceId.size() <= 128
+        && data.serviceName is string && data.serviceName.size() <= 100
+        && data.price is number && data.price >= 0
+        && data.duration is number && data.duration >= 0
+        && data.date is string && data.date.size() == 10
+        && data.timeSlot is string && data.timeSlot.size() <= 10
+        && data.barberId is string && data.barberId.size() <= 128
+        && data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+    }
+
+    function isValidExpense(data) {
+      return data.keys().hasAll(['id', 'date', 'description', 'category', 'amount'])
+        && isValidId(data.id)
+        && data.date is string && data.date.size() == 10
+        && data.description is string && data.description.size() <= 200
+        && data.category is string && data.category.size() <= 100
+        && data.amount is number && data.amount >= 0;
+    }
+
+    function isValidVisitRecord(data) {
+      return data.keys().hasAll(['id', 'clientId', 'date', 'barberId', 'barberName', 'serviceName', 'price', 'productsUsed'])
+        && isValidId(data.id)
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.date is string && data.date.size() == 10
+        && data.barberId is string && data.barberId.size() <= 128
+        && data.barberName is string && data.barberName.size() <= 100
+        && data.serviceName is string && data.serviceName.size() <= 100
+        && data.price is number && data.price >= 0
+        && data.productsUsed is list;
+    }
+
+    // --- COLECTION MATCH RULES ---
+
+    // 1. Config / Settings
+    match /config/barbershop {
+      allow read: if true; // Any client or staff can read config (services, hours, barbers)
+      allow write: if isSignedIn() && isValidConfig(incoming());
+    }
+
+    // 2. Clients
+    match /clients/{clientId} {
+      allow read: if true; // Let public client lookup be active or signed in users
+      allow write: if isSignedIn() && isValidClient(incoming()) && isValidId(clientId);
+    }
+
+    // 3. Products
+    match /products/{productId} {
+      allow read: if true; // Anyone can view products or prices
+      allow write: if isSignedIn() && isValidProduct(incoming()) && isValidId(productId);
+    }
+
+    // 4. Appointments
+    match /appointments/{appointmentId} {
+      allow read: if true; // Guests and logged in users can view appointments for booking availability
+      allow create: if isValidAppointment(incoming()) && isValidId(appointmentId);
+      allow update, delete: if isSignedIn() && isValidAppointment(incoming()) && isValidId(appointmentId);
+    }
+
+    // 5. Expenses
+    match /expenses/{expenseId} {
+      allow read, write: if isSignedIn() && isValidExpense(incoming()) && isValidId(expenseId);
+    }
+
+    // 6. Visit Records
+    match /visit_records/{recordId} {
+      allow read, write: if isSignedIn() && isValidVisitRecord(incoming()) && isValidId(recordId);
+    }
+
+  }
+}
